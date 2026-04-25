@@ -884,6 +884,28 @@ def _pipeline_page() -> None:
 
     user_filter, _ = _resolve_user_filter()
     rows = get_jobs(st.session_state["db_path"], user_id=user_filter, limit=800)
+    with st.container(border=True):
+        p1, p2 = st.columns([2.4, 1.2], vertical_alignment="center")
+        with p1:
+            min_pipeline_score = st.slider(
+                "Minimum fit score for Pipeline",
+                min_value=0.0,
+                max_value=5.0,
+                value=4.0,
+                step=0.1,
+                key="pipeline_min_score",
+            )
+        with p2:
+            render_metric_card_compact("Pipeline Threshold", f"{min_pipeline_score:.1f}/5")
+
+    rows = [r for r in rows if float(r.get("fit_score", 0) or 0) >= float(min_pipeline_score)]
+    if not rows:
+        render_empty_state(
+            "No jobs match pipeline threshold",
+            "Lower the pipeline threshold or ingest/score more jobs.",
+            kind="search",
+        )
+        return
 
     cols = st.columns(len(PIPELINE_COLUMNS))
     for idx, (column, statuses) in enumerate(PIPELINE_COLUMNS.items()):
