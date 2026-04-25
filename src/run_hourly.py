@@ -9,6 +9,7 @@ from typing import Any
 
 from src.db import finish_fetch_run, init_db, start_fetch_run
 from src.logging_utils import configure_logging
+from src.profile_sources import resolve_sources_for_profile
 from src.run_daily import run_daily
 
 configure_logging("run_hourly")
@@ -25,6 +26,10 @@ def _split_csv(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _parse_bool(value: str) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run hourly scrape/score pipeline for one or more profiles.")
     parser.add_argument("--companies-csv", default="config/target_companies.csv", help="Target companies CSV file path")
@@ -37,6 +42,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--db-path", default="data/jobs.db", help="SQLite DB path")
     parser.add_argument("--profiles", default="", help="Optional comma-separated profile ids to run")
     parser.add_argument("--timeout", type=int, default=20, help="HTTP timeout seconds")
+    parser.add_argument(
+        "--use-profile-sources",
+        default="true",
+        help="Use per-profile CSV files under config/users/<profile>/ (true/false).",
+    )
     parser.add_argument(
         "--summary-path",
         default="outputs/hourly_summary.json",
@@ -52,6 +62,7 @@ def run_hourly(
     db_path: str,
     profiles: list[str] | None = None,
     timeout: int = 20,
+    use_profile_sources: bool = True,
     summary_path: str = "outputs/hourly_summary.json",
 ) -> dict[str, Any]:
     init_db(db_path)
@@ -79,12 +90,19 @@ def run_hourly(
     for profile_id in target_profiles:
         run_id = start_fetch_run(db_path=db_path, run_type="hourly", profile_id=profile_id)
         LOGGER.info("Starting hourly profile run | profile=%s | run_id=%s", profile_id, run_id)
+        source_paths = resolve_sources_for_profile(
+            profile_id=profile_id,
+            companies_csv=companies_csv,
+            linkedin_csv=linkedin_csv,
+            manual_jobs_csv=manual_jobs_csv,
+            use_profile_sources=use_profile_sources,
+        )
 
         try:
             summary = run_daily(
-                companies_csv=companies_csv,
-                linkedin_csv=linkedin_csv,
-                manual_jobs_csv=manual_jobs_csv,
+                companies_csv=source_paths["companies_csv"],
+                linkedin_csv=source_paths["linkedin_csv"],
+                manual_jobs_csv=source_paths["manual_jobs_csv"],
                 db_path=db_path,
                 user_id=profile_id,
                 timeout=timeout,
@@ -108,6 +126,7 @@ def run_hourly(
                     "profile_id": profile_id,
                     "fetch_run_id": run_id,
                     "status": "success",
+                    "sources": source_paths,
                     "summary": summary,
                 }
             )
@@ -128,6 +147,7 @@ def run_hourly(
                     "profile_id": profile_id,
                     "fetch_run_id": run_id,
                     "status": "failed",
+                    "sources": source_paths,
                     "error": str(exc),
                 }
             )
@@ -159,6 +179,7 @@ def main() -> None:
         db_path=args.db_path,
         profiles=selected_profiles,
         timeout=args.timeout,
+        use_profile_sources=_parse_bool(args.use_profile_sources),
         summary_path=args.summary_path,
     )
     print(json.dumps(summary, indent=2))

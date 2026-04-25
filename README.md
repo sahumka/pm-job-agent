@@ -4,6 +4,7 @@ Local-first multi-user job search system for discovery, scoring, tracking, autom
 
 ## Key Features
 - Multi-user profile onboarding (`shiven_analytics`, `tanya_product`, `shreya_finance`)
+- Per-profile source isolation (`config/users/<profile>/target_companies.csv`, `linkedin_jobs.csv`, `manual_jobs.csv`)
 - Job collection from Greenhouse, Lever, Ashby, generic careers pages, plus manual/LinkedIn CSV import
 - Rule-based scoring with no paid API required
 - SQLite storage with dedupe and run logging
@@ -107,6 +108,14 @@ Hourly workflow notifications:
 - Sends a 1-hour in-progress email (only if still running)
 - Sends final completion/failure email with summary metrics
 - Auto-skips stale scheduled runs if queue delay exceeds 20 minutes
+
+Profile-isolated sources:
+- Hourly runs use per-profile files by default:
+  - `config/users/<profile_id>/target_companies.csv`
+  - `config/users/<profile_id>/linkedin_jobs.csv`
+  - `config/users/<profile_id>/manual_jobs.csv`
+- If a profile file is missing, it is bootstrapped from shared defaults once.
+- In Streamlit `Profile Setup`, use **Initialize/Refresh Profile Source Files** to create/update these files.
 
 Manual test crawl workflow:
 - `Test Crawl (25 Companies)` can be run on demand from Actions

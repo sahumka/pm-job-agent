@@ -42,6 +42,7 @@ from services.db import (
 from services.ingestion import ingest_single_job_url, run_job_ingestion
 from services.scoring import missing_keywords, parse_keywords, score_band, sponsorship_signal
 from src.dashboard_utils import follow_up_queue, funnel_metrics
+from src.profile_sources import bootstrap_profile_sources, profile_source_dir
 from src.resume_intake import save_base_resume
 from src.runtime_config import env_str
 from src.run_hourly import run_hourly
@@ -277,6 +278,26 @@ def _profile_page() -> None:
                     st.info("Auto-extraction was limited. Please review and edit base_resume.md manually.")
                 else:
                     st.caption(f"Extracted characters: {result['char_count']}")
+
+        st.markdown("### Profile Source Files")
+        st.caption("Each profile can maintain separate CSV sources for companies, LinkedIn imports, and manual imports.")
+        profile_slug = str(base.get("user_id", "")).strip() or str(selected if selected != "Create New" else "").strip()
+        if profile_slug:
+            source_dir = profile_source_dir(profile_slug)
+            st.code(str(source_dir), language="text")
+            if action_button(
+                "Initialize/Refresh Profile Source Files",
+                action_name="Initialize Profile Source Files",
+                use_container_width=True,
+            ):
+                paths = bootstrap_profile_sources(
+                    profile_id=profile_slug,
+                    companies_csv="config/target_companies.csv",
+                    linkedin_csv="config/linkedin_jobs.csv",
+                    manual_jobs_csv="config/manual_jobs.csv",
+                )
+                st.success("Profile source files are ready.")
+                st.json(paths)
 
 
 def _ingestion_page() -> None:

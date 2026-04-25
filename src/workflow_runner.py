@@ -65,6 +65,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--timeout", type=int, default=20)
     parser.add_argument("--summary-path", default="outputs/hourly_summary.json")
     parser.add_argument(
+        "--use-profile-sources",
+        default="true",
+        help="Use per-profile CSV files under config/users/<profile>/ (true/false).",
+    )
+    parser.add_argument(
         "--midpoint-seconds",
         type=int,
         default=3600,
@@ -76,6 +81,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Disable all workflow notification emails.",
     )
     return parser
+
+
+def _parse_bool(value: str) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def main() -> None:
@@ -130,6 +139,7 @@ def main() -> None:
             db_path=args.db_path,
             profiles=profiles,
             timeout=int(args.timeout),
+            use_profile_sources=_parse_bool(args.use_profile_sources),
             summary_path=args.summary_path,
         )
     except Exception as exc:  # pragma: no cover - surfaced in workflow logs

@@ -77,6 +77,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--manual-jobs-csv", default="config/manual_jobs.csv", help="Manual jobs CSV path")
     parser.add_argument("--timeout", type=int, default=20, help="HTTP timeout for retry run")
     parser.add_argument(
+        "--use-profile-sources",
+        default="true",
+        help="Use per-profile CSV files under config/users/<profile>/ (true/false).",
+    )
+    parser.add_argument(
         "--run-types",
         default="hourly",
         help="Comma-separated run types to inspect for failures (default: hourly)",
@@ -97,6 +102,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="run_hourly summary JSON path",
     )
     return parser
+
+
+def _parse_bool(value: str) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def main() -> None:
@@ -133,6 +142,7 @@ def main() -> None:
         db_path=args.db_path,
         profiles=selected,
         timeout=int(args.timeout),
+        use_profile_sources=_parse_bool(args.use_profile_sources),
         summary_path=args.summary_path,
     )
     result = {

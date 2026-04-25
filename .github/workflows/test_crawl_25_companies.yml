@@ -112,6 +112,7 @@ jobs:
               --profiles "$PROFILES" \
               --db-path data/jobs.db \
               --timeout "${INPUT_TIMEOUT:-20}" \
+              --use-profile-sources false \
               --summary-path outputs/hourly_test25_summary.json \
               --midpoint-seconds 3600 \
               ${notify_flag}
@@ -122,6 +123,7 @@ jobs:
               --manual-jobs-csv config/manual_jobs.csv \
               --db-path data/jobs.db \
               --timeout "${INPUT_TIMEOUT:-20}" \
+              --use-profile-sources false \
               --summary-path outputs/hourly_test25_summary.json \
               --midpoint-seconds 3600 \
               ${notify_flag}
