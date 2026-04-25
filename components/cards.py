@@ -90,6 +90,20 @@ def render_metric_card(label: str, value: str, icon: str = "•") -> None:
     )
 
 
+def render_metric_card_compact(label: str, value: str) -> None:
+    st.markdown(
+        dedent(
+            f"""
+            <div class="pc-kpi-compact">
+              <div class="pc-kpi-compact-label">{label}</div>
+              <div class="pc-kpi-compact-value">{value}</div>
+            </div>
+            """
+        ).strip(),
+        unsafe_allow_html=True,
+    )
+
+
 def render_keyword_chip(text: str) -> None:
     st.markdown(f'<span class="pc-chip">{text}</span>', unsafe_allow_html=True)
 

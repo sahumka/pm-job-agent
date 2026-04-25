@@ -235,6 +235,33 @@ def apply_theme() -> None:
           background: #FCFDFE;
         }
 
+        .pc-kpi-compact {
+          background: #FFFFFF;
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          min-height: 84px;
+          padding: 0.65rem 0.9rem;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          box-shadow: 0 1px 5px rgba(17, 24, 39, 0.04);
+        }
+
+        .pc-kpi-compact-label {
+          color: #4B5563;
+          font-size: 0.98rem;
+          font-weight: 600;
+          line-height: 1.2;
+          margin-bottom: 0.22rem;
+        }
+
+        .pc-kpi-compact-value {
+          color: #111827;
+          font-size: 1.85rem;
+          font-weight: 700;
+          line-height: 1;
+        }
+
         .pc-kpi-label {
           color: #4B5563;
           font-size: 24px;

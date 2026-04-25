@@ -14,6 +14,7 @@ DEFAULT_CONTEXT = {
     "display_name": "Default User",
     "notification_email": "",
     "crawl_active": False,
+    "setup_completed": False,
     "target_roles": ["Product Manager"],
     "preferred_locations": ["Remote US"],
     "excluded_locations": [],
@@ -71,13 +72,23 @@ def save_profile(context: dict[str, Any], root: Path = Path("config/users")) -> 
     normalized.update(context)
     normalized["user_id"] = normalized_user
 
-    # First setup defaults to crawl-active; later edits preserve explicit choice.
+    incoming_setup_completed = _as_bool(context.get("setup_completed"), default=False) if "setup_completed" in context else None
+    existing_setup_completed = _as_bool(existing.get("setup_completed"), default=False)
+
+    if incoming_setup_completed is None:
+        normalized["setup_completed"] = existing_setup_completed
+    else:
+        normalized["setup_completed"] = incoming_setup_completed
+
+    # First successful setup defaults to crawl-active; later edits preserve explicit choice.
     if "crawl_active" in context:
         normalized["crawl_active"] = _as_bool(context.get("crawl_active"), default=True)
+    elif normalized["setup_completed"] and not existing_setup_completed:
+        normalized["crawl_active"] = True
     elif existing:
         normalized["crawl_active"] = _as_bool(existing.get("crawl_active"), default=True)
     else:
-        normalized["crawl_active"] = True
+        normalized["crawl_active"] = False
 
     with path.open("w", encoding="utf-8") as handle:
         if yaml is None:
@@ -152,10 +163,11 @@ def load_profile(user_id: str | None = None, root: Path = Path("config/users")) 
 
 
 def is_profile_configured(profile: dict[str, Any]) -> bool:
+    setup_completed = _as_bool(profile.get("setup_completed"), default=False)
     user_id = str(profile.get("user_id", "")).strip()
     display = str(profile.get("display_name", "")).strip()
     target_roles = [str(x).strip() for x in profile.get("target_roles", []) if str(x).strip()]
-    return bool(user_id and display and target_roles)
+    return bool(setup_completed and user_id and display and target_roles)
 
 
 def list_crawl_enabled_profiles(root: Path = Path("config/users")) -> list[str]:

@@ -21,6 +21,7 @@ def test_save_and_load_profile(tmp_path: Path) -> None:
             "display_name": "Wife PM",
             "target_roles": ["Product Manager"],
             "preferred_locations": ["Remote US"],
+            "setup_completed": True,
         },
         root=users_dir,
     )
@@ -41,6 +42,7 @@ def test_profile_can_be_toggled_inactive(tmp_path: Path) -> None:
             "user_id": "shiven_analytics",
             "display_name": "Shiven",
             "target_roles": ["Product Analytics Manager"],
+            "setup_completed": True,
         },
         root=users_dir,
     )

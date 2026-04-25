@@ -16,6 +16,7 @@ from components.cards import (
     render_chip_row,
     render_job_card,
     render_metric_card,
+    render_metric_card_compact,
     render_page_header,
     render_status_badge,
 )
@@ -117,11 +118,11 @@ def _dashboard_page() -> None:
             runtime = get_profile_runtime_status(user_filter)
             status_text = "Active" if runtime.get("crawl_active") else "Inactive"
             configured_text = "Configured" if runtime.get("configured") else "Not Configured"
-            c1, c2, c3 = st.columns([1.2, 1.2, 1.6])
+            c1, c2, c3 = st.columns([1.2, 1.2, 1.6], vertical_alignment="center")
             with c1:
-                render_metric_card("Crawl Status", status_text)
+                render_metric_card_compact("Crawl Status", status_text)
             with c2:
-                render_metric_card("Profile Setup", configured_text)
+                render_metric_card_compact("Profile Setup", configured_text)
             with c3:
                 toggle_label = "Make Inactive" if runtime.get("crawl_active") else "Make Active"
                 if action_button(toggle_label, action_name=f"Toggle Crawl Active {user_filter}", use_container_width=True):
@@ -134,11 +135,11 @@ def _dashboard_page() -> None:
         else:
             enabled = get_crawl_enabled_profiles()
             total_profiles = len(get_profiles())
-            c1, c2 = st.columns(2)
+            c1, c2 = st.columns(2, vertical_alignment="center")
             with c1:
-                render_metric_card("Crawl-Active Profiles", str(len(enabled)))
+                render_metric_card_compact("Crawl-Active Profiles", str(len(enabled)))
             with c2:
-                render_metric_card("Total Profiles", str(total_profiles))
+                render_metric_card_compact("Total Profiles", str(total_profiles))
             st.caption("Select a profile to toggle active/inactive crawl status.")
 
     rows = get_jobs(st.session_state["db_path"], user_id=user_filter, limit=2000)
@@ -266,6 +267,7 @@ def _profile_page() -> None:
             if not profile.get("user_id"):
                 st.error("User ID is required.")
             else:
+                profile["setup_completed"] = True
                 path = save_profile_data(profile, set_active=set_active_toggle)
                 st.success(f"Profile saved to {path}")
                 st.rerun()
@@ -499,11 +501,11 @@ def _scoring_page() -> None:
     profile = load_profile_data(user_filter)
 
     with st.container(border=True):
-        s1, s2 = st.columns([4.2, 1.0])
+        s1, s2 = st.columns([5.0, 1.2], vertical_alignment="bottom")
         with s1:
             min_score = st.slider("Minimum fit score", 0.0, 5.0, 0.0, 0.1)
         with s2:
-            render_metric_card("Threshold", f"{min_score:.1f}/5", icon=ICON["threshold"])
+            render_metric_card_compact("Threshold", f"{min_score:.1f}/5")
 
     filtered = [r for r in rows if float(r.get("fit_score", 0) or 0) >= min_score]
     if not filtered:

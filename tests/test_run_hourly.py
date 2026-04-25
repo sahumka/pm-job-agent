@@ -14,6 +14,7 @@ def test_list_profile_ids_reads_enabled_profiles(tmp_path: Path) -> None:
         "display_name: Tanya\n"
         "target_roles:\n"
         "  - Product Manager\n"
+        "setup_completed: true\n"
         "crawl_active: true\n",
         encoding="utf-8",
     )
@@ -22,6 +23,7 @@ def test_list_profile_ids_reads_enabled_profiles(tmp_path: Path) -> None:
         "display_name: Shiven\n"
         "target_roles:\n"
         "  - Product Analytics Manager\n"
+        "setup_completed: true\n"
         "crawl_active: true\n",
         encoding="utf-8",
     )

@@ -1,44 +1,45 @@
 user_id: tanya_product
 display_name: Tanya - Product
 notification_email: tanyagopal14@gmail.com
-crawl_active: true
+crawl_active: false
+setup_completed: false
 target_roles:
-  - Product Manager
-  - Senior Product Manager
-  - AI Product Manager
-  - Data Product Manager
-  - Platform Product Manager
+- Product Manager
+- Senior Product Manager
+- AI Product Manager
+- Data Product Manager
+- Platform Product Manager
 preferred_locations:
-  - Seattle
-  - Bellevue
-  - Remote US
-  - Denver
-  - Boston
+- Seattle
+- Bellevue
+- Remote US
+- Denver
+- Boston
 excluded_locations: []
 work_modes:
-  - remote
-  - hybrid
+- remote
+- hybrid
 years_experience: 5
 target_seniority:
-  - mid
-  - senior
+- mid
+- senior
 domains:
-  - ai
-  - platform
-  - data
+- ai
+- platform
+- data
 skills:
-  - roadmap
-  - stakeholder management
-  - experimentation
-  - product strategy
-  - requirements
+- roadmap
+- stakeholder management
+- experimentation
+- product strategy
+- requirements
 must_have_keywords:
-  - roadmap
-  - stakeholders
+- roadmap
+- stakeholders
 nice_to_have_keywords:
-  - growth
-  - platform
+- growth
+- platform
 avoid_keywords:
-  - unpaid
+- unpaid
 visa_requirements: []
 compensation_min_usd: 0
