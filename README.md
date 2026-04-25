@@ -89,7 +89,6 @@ GitHub Actions:
 - `.github/workflows/hourly_job_collection.yml` (every 2 hours + manual)
 - `.github/workflows/test_crawl_25_companies.yml` (manual test run with 25 companies)
 - `.github/workflows/ci.yml` (ruff + compile + tests)
-- `.github/workflows/daily_job_search.yml` (8 AM Pacific daily + manual)
 - `.github/workflows/retry_latest_failed_per_profile.yml` (manual on-demand retry mode)
 
 Each workflow now writes an **Ops Summary** in the GitHub Actions run summary panel (profiles run, inserted, duplicates, failures, retry selection).
