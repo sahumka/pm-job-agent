@@ -13,6 +13,7 @@ from src.dashboard_utils import split_csv_string, suggest_keywords_from_sample_j
 PROFILE_TEMPLATE = {
     "user_id": "",
     "display_name": "",
+    "notification_email": "",
     "years_experience": 0,
     "target_seniority": ["mid", "senior"],
     "work_modes": ["remote", "hybrid"],
@@ -44,6 +45,11 @@ def render_profile_form(base: dict[str, Any], key_prefix: str = "profile") -> tu
         with c1:
             user_id = st.text_input("User ID", value=str(data.get("user_id", "")), placeholder="tanya_product")
             display_name = st.text_input("Display Name", value=str(data.get("display_name", "")), placeholder="Tanya - Product")
+            notification_email = st.text_input(
+                "Notification email",
+                value=str(data.get("notification_email", "")),
+                placeholder="name@example.com",
+            )
             years_experience = st.number_input(
                 "Years of experience", min_value=0, max_value=50, value=int(data.get("years_experience", 0) or 0)
             )
@@ -97,6 +103,7 @@ def render_profile_form(base: dict[str, Any], key_prefix: str = "profile") -> tu
     profile = {
         "user_id": user_id.strip(),
         "display_name": display_name.strip() or user_id.strip(),
+        "notification_email": notification_email.strip(),
         "years_experience": int(years_experience),
         "target_seniority": target_seniority or ["mid", "senior"],
         "work_modes": work_modes or ["remote", "hybrid", "onsite"],

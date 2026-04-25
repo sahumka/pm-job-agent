@@ -1,5 +1,6 @@
 user_id: shiven_analytics
 display_name: Shiven - Analytics
+notification_email: shivenahuja94@gmail.com
 target_roles:
 - Product Analytics Manager
 - Analytics Manager

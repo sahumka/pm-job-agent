@@ -5,37 +5,37 @@ import json
 import os
 import smtplib
 import threading
-import time
 from datetime import datetime, timezone
 from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any
 
 from src.run_hourly import run_hourly
+from src.user_context import load_profile
 
 
 def _parse_profiles(value: str) -> list[str]:
     return [part.strip() for part in str(value).split(",") if part.strip()]
 
 
-def _send_email(subject: str, body: str) -> bool:
+def _send_email(subject: str, body: str, email_to: str | None = None) -> bool:
     email_from = os.getenv("EMAIL_FROM", "").strip()
     email_password = os.getenv("EMAIL_PASSWORD", "").strip()
-    email_to = os.getenv("EMAIL_TO", "").strip()
+    target_email = (email_to or os.getenv("EMAIL_TO", "")).strip()
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com").strip() or "smtp.gmail.com"
     smtp_port = int(os.getenv("SMTP_PORT", "465"))
 
-    if not (email_from and email_password and email_to):
+    if not (email_from and email_password and target_email):
         return False
 
     message = MIMEText(body, "plain", "utf-8")
     message["Subject"] = subject
     message["From"] = email_from
-    message["To"] = email_to
+    message["To"] = target_email
 
     with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=20) as smtp:
         smtp.login(email_from, email_password)
-        smtp.sendmail(email_from, [email_to], message.as_string())
+        smtp.sendmail(email_from, [target_email], message.as_string())
     return True
 
 
@@ -49,10 +49,54 @@ def _format_totals(summary: dict[str, Any]) -> str:
         f"Jobs scraped: {totals.get('jobs_scraped', 0)}",
         f"Jobs matched role filter: {totals.get('jobs_matched_role_filter', 0)}",
         f"Jobs inserted: {totals.get('jobs_inserted', 0)}",
+        f"High-quality inserted (>=4.0): {totals.get('high_quality_inserted', 0)}",
         f"Duplicates skipped: {totals.get('duplicates_skipped', 0)}",
         f"Errors: {totals.get('errors', 0)}",
     ]
     return "\n".join(lines)
+
+
+def _profile_email(profile_id: str) -> tuple[str, str]:
+    profile = load_profile(user_id=profile_id)
+    display_name = str(profile.get("display_name", profile_id)).strip() or profile_id
+    email = str(profile.get("notification_email", "")).strip()
+    return display_name, email
+
+
+def _send_profile_summaries(summary: dict[str, Any], started_utc: datetime, ended_utc: datetime) -> int:
+    sent = 0
+    for run in summary.get("profile_runs", []):
+        profile_id = str(run.get("profile_id", "")).strip()
+        if not profile_id:
+            continue
+        display_name, recipient = _profile_email(profile_id)
+        if not recipient:
+            continue
+        status = str(run.get("status", "unknown")).strip().lower()
+        detail = run.get("summary", {}) or {}
+
+        new_jobs = int(detail.get("jobs_inserted", 0))
+        high_quality = int(detail.get("high_quality_inserted", 0))
+        duplicates = int(detail.get("duplicates_skipped", 0))
+        errors = int(detail.get("errors", 0))
+
+        subject = f"[PM Copilot] Production crawl update - {display_name}"
+        body = (
+            f"Hi {display_name},\n\n"
+            "Your production crawl update is ready.\n\n"
+            f"Profile: {profile_id}\n"
+            f"Started (UTC): {started_utc.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"Ended (UTC): {ended_utc.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"Status: {status}\n\n"
+            f"New listings added: {new_jobs}\n"
+            f"High-quality listings (fit >= 4.0): {high_quality}\n"
+            f"Duplicates skipped: {duplicates}\n"
+            f"Errors: {errors}\n\n"
+            "Open your Streamlit dashboard for full details."
+        )
+        if _send_email(subject=subject, body=body, email_to=recipient):
+            sent += 1
+    return sent
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -79,6 +123,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--disable-notifications",
         action="store_true",
         help="Disable all workflow notification emails.",
+    )
+    parser.add_argument(
+        "--disable-profile-summary-emails",
+        action="store_true",
+        help="Disable per-profile summary emails.",
     )
     return parser
 
@@ -165,6 +214,9 @@ def main() -> None:
                     f"{_format_totals(summary)}\n"
                 )
                 _send_email(subject="[PM Copilot] Crawl finished (summary)", body=body)
+                if not args.disable_profile_summary_emails:
+                    sent_count = _send_profile_summaries(summary=summary, started_utc=started_utc, ended_utc=ended_utc)
+                    print(f"Profile summary emails sent: {sent_count}")
             else:
                 body = (
                     "Hourly crawl failed.\n\n"

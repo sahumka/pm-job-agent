@@ -12,6 +12,7 @@ except Exception:  # pragma: no cover - allow no-deps local fallback
 DEFAULT_CONTEXT = {
     "user_id": "default",
     "display_name": "Default User",
+    "notification_email": "",
     "target_roles": ["Product Manager"],
     "preferred_locations": ["Remote US"],
     "excluded_locations": [],

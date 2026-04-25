@@ -80,6 +80,7 @@ def run_hourly(
             "jobs_scraped": 0,
             "jobs_matched_role_filter": 0,
             "jobs_inserted": 0,
+            "high_quality_inserted": 0,
             "duplicates_skipped": 0,
             "errors": 0,
             "profiles_succeeded": 0,
@@ -136,6 +137,7 @@ def run_hourly(
                 "jobs_scraped",
                 "jobs_matched_role_filter",
                 "jobs_inserted",
+                "high_quality_inserted",
                 "duplicates_skipped",
                 "errors",
             ):

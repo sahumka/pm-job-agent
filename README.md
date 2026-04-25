@@ -108,6 +108,15 @@ Hourly workflow notifications:
 - Sends a 1-hour in-progress email (only if still running)
 - Sends final completion/failure email with summary metrics
 - Auto-skips stale scheduled runs if queue delay exceeds 20 minutes
+- Sends per-profile summary emails (new listings + high-quality listings) to each profile's `notification_email`
+
+Profile email routing:
+- Set `notification_email` in each `config/users/<profile>.yaml`
+- Sender comes from `EMAIL_FROM` / `EMAIL_PASSWORD` secrets
+- Example profiles:
+  - `shiven_analytics -> shivenahuja94@gmail.com`
+  - `tanya_product -> tanyagopal14@gmail.com`
+  - `shreya_finance -> shreyaahuja1997@gmail.com`
 
 Profile-isolated sources:
 - Hourly runs use per-profile files by default:

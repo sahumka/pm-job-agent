@@ -20,6 +20,7 @@ from src.user_context import get_active_user, load_profile
 
 configure_logging("run_daily")
 LOGGER = logging.getLogger(__name__)
+HIGH_QUALITY_THRESHOLD = 4.0
 
 
 def _split_csv(value: str) -> list[str]:
@@ -138,6 +139,8 @@ def _insert_scored_job(
 
     if inserted:
         summary["jobs_inserted"] += 1
+        if float(score.get("fit_score", 0) or 0) >= HIGH_QUALITY_THRESHOLD:
+            summary["high_quality_inserted"] += 1
     else:
         summary["duplicates_skipped"] += 1
 
@@ -162,6 +165,7 @@ def run_daily(
         "jobs_scraped": 0,
         "jobs_matched_role_filter": 0,
         "jobs_inserted": 0,
+        "high_quality_inserted": 0,
         "duplicates_skipped": 0,
         "linkedin_rows_loaded": 0,
         "linkedin_rows_matched": 0,

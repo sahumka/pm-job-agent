@@ -186,21 +186,22 @@ jobs:
           lines.append(f"- Profiles succeeded: **{totals.get('profiles_succeeded', len(succeeded))}**")
           lines.append(f"- Profiles failed: **{totals.get('profiles_failed', len(failed))}**")
           lines.append(f"- Jobs inserted: **{totals.get('jobs_inserted', 0)}**")
+          lines.append(f"- High-quality inserted (>=4.0): **{totals.get('high_quality_inserted', 0)}**")
           lines.append(f"- Duplicates skipped: **{totals.get('duplicates_skipped', 0)}**")
           lines.append(f"- Errors: **{totals.get('errors', 0)}**")
           lines.append("")
           lines.append("### Profile outcomes")
           lines.append("")
-          lines.append("| Profile | Status | Inserted | Duplicates | Errors |")
-          lines.append("|---|---:|---:|---:|---:|")
+          lines.append("| Profile | Status | Inserted | High-Quality | Duplicates | Errors |")
+          lines.append("|---|---:|---:|---:|---:|---:|")
           for r in runs[:50]:
               s = r.get("summary", {}) or {}
               lines.append(
                   f"| {r.get('profile_id','')} | {r.get('status','')} | "
-                  f"{s.get('jobs_inserted', 0)} | {s.get('duplicates_skipped', 0)} | {s.get('errors', 0)} |"
+                  f"{s.get('jobs_inserted', 0)} | {s.get('high_quality_inserted', 0)} | {s.get('duplicates_skipped', 0)} | {s.get('errors', 0)} |"
               )
           if not runs:
-              lines.append("| (none) | - | - | - | - |")
+              lines.append("| (none) | - | - | - | - | - |")
 
           step_summary = Path(__import__("os").environ["GITHUB_STEP_SUMMARY"])
           step_summary.write_text("\n".join(lines) + "\n", encoding="utf-8")
