@@ -1,0 +1,13 @@
+services:
+  pmcopilot:
+    build: .
+    container_name: pm-job-copilot
+    ports:
+      - "8513:8513"
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+    env_file:
+      - .env

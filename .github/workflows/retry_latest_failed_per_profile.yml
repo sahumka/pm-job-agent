@@ -1,0 +1,146 @@
+name: Retry Latest Failed Per Profile
+
+on:
+  workflow_dispatch:
+    inputs:
+      profiles:
+        description: "Optional comma-separated profiles to constrain retries (blank = all failed profiles)"
+        required: false
+        default: ""
+      run_types:
+        description: "Comma-separated run types to inspect (default: hourly)"
+        required: false
+        default: "hourly"
+      timeout:
+        description: "HTTP timeout seconds for retry execution"
+        required: false
+        default: "20"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retry-latest-failed-per-profile
+  cancel-in-progress: false
+
+jobs:
+  retry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare directories
+        run: |
+          mkdir -p data outputs
+
+      - name: Restore persisted DB cache
+        id: db-cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            data/jobs.db
+            outputs/hourly_summary.json
+            outputs/hourly_retry_latest_summary.json
+            outputs/retry_latest_failed_profiles.json
+          key: jobsdb-${{ runner.os }}-${{ github.ref_name }}-retry-${{ github.run_id }}
+          restore-keys: |
+            jobsdb-${{ runner.os }}-${{ github.ref_name }}-retry-
+            jobsdb-${{ runner.os }}-${{ github.ref_name }}-hourly-
+            jobsdb-${{ runner.os }}-${{ github.ref_name }}-daily-
+            jobsdb-${{ runner.os }}-${{ github.ref_name }}-
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Retry latest failed per profile
+        env:
+          INPUT_PROFILES: ${{ github.event.inputs.profiles }}
+          INPUT_RUN_TYPES: ${{ github.event.inputs.run_types }}
+          INPUT_TIMEOUT: ${{ github.event.inputs.timeout }}
+          SOURCE_AUTO_DISABLE_EMPTY: "false"
+        run: |
+          python -m src.retry_failed_runs \
+            --db-path data/jobs.db \
+            --companies-csv config/target_companies.csv \
+            --linkedin-csv config/linkedin_jobs.csv \
+            --manual-jobs-csv config/manual_jobs.csv \
+            --run-types "${INPUT_RUN_TYPES:-hourly}" \
+            --profiles "${INPUT_PROFILES}" \
+            --timeout "${INPUT_TIMEOUT:-20}" \
+            --selection-output outputs/retry_latest_failed_profiles.json \
+            --summary-path outputs/hourly_retry_latest_summary.json
+
+      - name: Write run summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          selection_path = Path("outputs/retry_latest_failed_profiles.json")
+          hourly_path = Path("outputs/hourly_retry_latest_summary.json")
+
+          lines = []
+          lines.append("## Retry Latest Failed Per Profile Summary")
+          lines.append("")
+
+          if selection_path.exists():
+              sel = json.loads(selection_path.read_text(encoding="utf-8"))
+              selected = sel.get("selected_profiles", [])
+              lines.append(f"- Selected profiles: **{sel.get('selected_count', len(selected))}**")
+              lines.append(f"- Run types inspected: `{','.join(sel.get('run_types', []))}`")
+              if selected:
+                  lines.append(f"- Profiles: `{', '.join(selected)}`")
+          else:
+              lines.append("- Selection file not found.")
+
+          if hourly_path.exists():
+              data = json.loads(hourly_path.read_text(encoding="utf-8"))
+              totals = data.get("totals", {})
+              lines.append("")
+              lines.append("### Retry execution")
+              lines.append("")
+              lines.append(f"- Profiles succeeded: **{totals.get('profiles_succeeded', 0)}**")
+              lines.append(f"- Profiles failed: **{totals.get('profiles_failed', 0)}**")
+              lines.append(f"- Jobs inserted: **{totals.get('jobs_inserted', 0)}**")
+              lines.append(f"- Duplicates skipped: **{totals.get('duplicates_skipped', 0)}**")
+              lines.append(f"- Errors: **{totals.get('errors', 0)}**")
+          else:
+              lines.append("")
+              lines.append("No retry execution summary file was generated (likely no failed profiles to retry).")
+
+          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text("\n".join(lines) + "\n", encoding="utf-8")
+          print("Retry summary written.")
+          PY
+
+      - name: Save persisted DB cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            data/jobs.db
+            outputs/hourly_retry_latest_summary.json
+            outputs/retry_latest_failed_profiles.json
+          key: jobsdb-${{ runner.os }}-${{ github.ref_name }}-retry-${{ github.run_id }}
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retry-latest-failed-${{ github.run_id }}
+          path: |
+            data/jobs.db
+            outputs/retry_latest_failed_profiles.json
+            outputs/hourly_retry_latest_summary.json
+            outputs/source_health.csv
+            outputs/source_health.json
+          if-no-files-found: warn

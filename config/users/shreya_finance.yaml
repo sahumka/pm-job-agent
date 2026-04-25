@@ -1,0 +1,38 @@
+user_id: shreya_finance
+display_name: Shreya - Finance
+target_roles:
+  - Financial Analyst
+  - Senior Financial Analyst
+  - FP and A Manager
+  - Finance Manager
+preferred_locations:
+  - Remote US
+  - Boston
+  - Denver
+excluded_locations: []
+work_modes:
+  - remote
+  - hybrid
+years_experience: 3
+target_seniority:
+  - entry
+  - mid
+  - senior
+domains:
+  - finance
+  - fp and a
+  - forecasting
+skills:
+  - financial modeling
+  - forecasting
+  - budgeting
+  - excel
+  - variance analysis
+must_have_keywords:
+  - financial modeling
+nice_to_have_keywords:
+  - cpa
+avoid_keywords:
+  - commission-only
+visa_requirements: []
+compensation_min_usd: 0

@@ -1,0 +1,42 @@
+user_id: tanya_product
+display_name: Tanya - Product
+target_roles:
+  - Product Manager
+  - Senior Product Manager
+  - AI Product Manager
+  - Data Product Manager
+  - Platform Product Manager
+preferred_locations:
+  - Seattle
+  - Bellevue
+  - Remote US
+  - Denver
+  - Boston
+excluded_locations: []
+work_modes:
+  - remote
+  - hybrid
+years_experience: 5
+target_seniority:
+  - mid
+  - senior
+domains:
+  - ai
+  - platform
+  - data
+skills:
+  - roadmap
+  - stakeholder management
+  - experimentation
+  - product strategy
+  - requirements
+must_have_keywords:
+  - roadmap
+  - stakeholders
+nice_to_have_keywords:
+  - growth
+  - platform
+avoid_keywords:
+  - unpaid
+visa_requirements: []
+compensation_min_usd: 0

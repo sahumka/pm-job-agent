@@ -1,0 +1,181 @@
+name: Test Crawl (25 Companies)
+
+on:
+  workflow_dispatch:
+    inputs:
+      profiles:
+        description: "Optional comma-separated profile ids (blank = all)"
+        required: false
+        default: ""
+      disable_notifications:
+        description: "Disable start/1-hour/end email notifications"
+        required: false
+        type: boolean
+        default: true
+      timeout:
+        description: "HTTP timeout seconds"
+        required: false
+        default: "20"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-crawl-25-companies
+  cancel-in-progress: true
+
+jobs:
+  test-crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare directories
+        run: |
+          mkdir -p data outputs config
+
+      - name: Build 25-company subset CSV
+        run: |
+          python - <<'PY'
+          import csv
+          from pathlib import Path
+
+          source = Path("config/target_companies.csv")
+          target = Path("config/target_companies_test_25.csv")
+          rows = []
+          with source.open("r", encoding="utf-8-sig", newline="") as f:
+              reader = csv.DictReader(f)
+              fieldnames = list(reader.fieldnames or [])
+              for row in reader:
+                  enabled = str(row.get("enabled", "true")).strip().lower()
+                  if enabled in {"false", "0", "no"}:
+                      continue
+                  rows.append(row)
+                  if len(rows) >= 25:
+                      break
+
+          target.parent.mkdir(parents=True, exist_ok=True)
+          with target.open("w", encoding="utf-8", newline="") as f:
+              writer = csv.DictWriter(f, fieldnames=fieldnames)
+              writer.writeheader()
+              writer.writerows(rows)
+          print(f"Wrote {len(rows)} rows to {target}")
+          PY
+
+      - name: Restore persisted DB cache
+        id: db-cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            data/jobs.db
+          key: jobsdb-${{ runner.os }}-${{ github.ref_name }}-test25-${{ github.run_id }}
+          restore-keys: |
+            jobsdb-${{ runner.os }}-${{ github.ref_name }}-hourly-
+            jobsdb-${{ runner.os }}-${{ github.ref_name }}-daily-
+            jobsdb-${{ runner.os }}-${{ github.ref_name }}-
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run 25-company test crawl
+        env:
+          PROFILES: ${{ github.event.inputs.profiles }}
+          DISABLE_NOTIFICATIONS: ${{ github.event.inputs.disable_notifications }}
+          INPUT_TIMEOUT: ${{ github.event.inputs.timeout }}
+          SOURCE_AUTO_DISABLE_EMPTY: "false"
+        run: |
+          notify_flag=""
+          if [ "${DISABLE_NOTIFICATIONS}" = "true" ]; then
+            notify_flag="--disable-notifications"
+          fi
+
+          if [ -n "$PROFILES" ]; then
+            python -m src.workflow_runner \
+              --companies-csv config/target_companies_test_25.csv \
+              --linkedin-csv config/linkedin_jobs.csv \
+              --manual-jobs-csv config/manual_jobs.csv \
+              --profiles "$PROFILES" \
+              --db-path data/jobs.db \
+              --timeout "${INPUT_TIMEOUT:-20}" \
+              --summary-path outputs/hourly_test25_summary.json \
+              --midpoint-seconds 3600 \
+              ${notify_flag}
+          else
+            python -m src.workflow_runner \
+              --companies-csv config/target_companies_test_25.csv \
+              --linkedin-csv config/linkedin_jobs.csv \
+              --manual-jobs-csv config/manual_jobs.csv \
+              --db-path data/jobs.db \
+              --timeout "${INPUT_TIMEOUT:-20}" \
+              --summary-path outputs/hourly_test25_summary.json \
+              --midpoint-seconds 3600 \
+              ${notify_flag}
+          fi
+
+      - name: Write run summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          p = Path("outputs/hourly_test25_summary.json")
+          if not p.exists():
+              Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text(
+                  "## Test Crawl (25 Companies) Summary\n\nNo summary file found.\n",
+                  encoding="utf-8",
+              )
+              raise SystemExit(0)
+
+          data = json.loads(p.read_text(encoding="utf-8"))
+          totals = data.get("totals", {})
+          lines = []
+          lines.append("## Test Crawl (25 Companies) Summary")
+          lines.append("")
+          lines.append("- Scope: **25 companies** from `config/target_companies.csv`")
+          lines.append(f"- Profiles requested: **{len(data.get('profiles_requested', []))}**")
+          lines.append(f"- Profiles succeeded: **{totals.get('profiles_succeeded', 0)}**")
+          lines.append(f"- Profiles failed: **{totals.get('profiles_failed', 0)}**")
+          lines.append(f"- Jobs inserted: **{totals.get('jobs_inserted', 0)}**")
+          lines.append(f"- Duplicates skipped: **{totals.get('duplicates_skipped', 0)}**")
+          lines.append(f"- Errors: **{totals.get('errors', 0)}**")
+          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
+
+      - name: Save persisted DB cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            data/jobs.db
+            outputs/hourly_test25_summary.json
+          key: jobsdb-${{ runner.os }}-${{ github.ref_name }}-test25-${{ github.run_id }}
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-crawl-25-companies-${{ github.run_id }}
+          path: |
+            config/target_companies_test_25.csv
+            data/jobs.db
+            outputs/hourly_test25_summary.json
+            outputs/source_health.csv
+            outputs/source_health.json
+          if-no-files-found: warn

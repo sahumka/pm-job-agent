@@ -1,0 +1,21 @@
+# Legacy single-user fallback config.
+# New multi-user profiles live in config/users/*.yaml.
+profile:
+  years_pm_experience: 5
+
+target_roles:
+  - Product Manager
+  - Senior Product Manager
+  - AI Product Manager
+  - Data Product Manager
+  - Platform Product Manager
+
+preferred_locations:
+  - Seattle/Bellevue
+  - Remote US
+  - Denver
+  - Boston
+
+scoring:
+  min_fit_score_to_flag: 3.5
+  default_status_for_new_jobs: New
