@@ -6,11 +6,25 @@ from pathlib import Path
 from src.run_hourly import list_profile_ids, run_hourly
 
 
-def test_list_profile_ids_reads_yaml_stems(tmp_path: Path) -> None:
+def test_list_profile_ids_reads_enabled_profiles(tmp_path: Path) -> None:
     users_root = tmp_path / "users"
     users_root.mkdir(parents=True, exist_ok=True)
-    (users_root / "tanya_product.yaml").write_text("user_id: tanya_product\n", encoding="utf-8")
-    (users_root / "shiven_analytics.yaml").write_text("user_id: shiven_analytics\n", encoding="utf-8")
+    (users_root / "tanya_product.yaml").write_text(
+        "user_id: tanya_product\n"
+        "display_name: Tanya\n"
+        "target_roles:\n"
+        "  - Product Manager\n"
+        "crawl_active: true\n",
+        encoding="utf-8",
+    )
+    (users_root / "shiven_analytics.yaml").write_text(
+        "user_id: shiven_analytics\n"
+        "display_name: Shiven\n"
+        "target_roles:\n"
+        "  - Product Analytics Manager\n"
+        "crawl_active: true\n",
+        encoding="utf-8",
+    )
     assert list_profile_ids(users_root) == ["shiven_analytics", "tanya_product"]
 
 
@@ -28,6 +42,10 @@ def test_run_hourly_writes_summary(monkeypatch, tmp_path: Path) -> None:
             "duplicates_skipped": 1,
             "errors": 0,
         },
+    )
+    monkeypatch.setattr(
+        "src.run_hourly.get_profile_status",
+        lambda _pid: {"user_id": "tanya_product", "configured": True, "crawl_active": True},
     )
 
     out = run_hourly(

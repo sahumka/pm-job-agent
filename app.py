@@ -25,17 +25,20 @@ from components.forms import render_keyword_assistant, render_profile_form
 from components.sidebar import render_sidebar
 from components.tables import render_jobs_table, render_recent_activity
 from services.db import (
+    get_crawl_enabled_profiles,
     dashboard_snapshot,
     delete_jobs_by_ids,
     ensure_db,
     get_active_profile,
     get_fetch_runs,
     get_jobs,
+    get_profile_runtime_status,
     get_profiles,
     list_users,
     load_profile_data,
     save_job_update,
     save_profile_data,
+    set_profile_runtime_active,
     set_active_profile,
     top_matching_roles,
 )
@@ -108,6 +111,36 @@ def _dashboard_page() -> None:
     )
 
     user_filter, _ = _resolve_user_filter()
+
+    with st.container(border=True):
+        if user_filter:
+            runtime = get_profile_runtime_status(user_filter)
+            status_text = "Active" if runtime.get("crawl_active") else "Inactive"
+            configured_text = "Configured" if runtime.get("configured") else "Not Configured"
+            c1, c2, c3 = st.columns([1.2, 1.2, 1.6])
+            with c1:
+                render_metric_card("Crawl Status", status_text)
+            with c2:
+                render_metric_card("Profile Setup", configured_text)
+            with c3:
+                toggle_label = "Make Inactive" if runtime.get("crawl_active") else "Make Active"
+                if action_button(toggle_label, action_name=f"Toggle Crawl Active {user_filter}", use_container_width=True):
+                    ok = set_profile_runtime_active(user_filter, not bool(runtime.get("crawl_active")))
+                    if ok:
+                        st.success(f"{user_filter} crawl status updated.")
+                        st.rerun()
+                    else:
+                        st.error("Could not update crawl status for this profile.")
+        else:
+            enabled = get_crawl_enabled_profiles()
+            total_profiles = len(get_profiles())
+            c1, c2 = st.columns(2)
+            with c1:
+                render_metric_card("Crawl-Active Profiles", str(len(enabled)))
+            with c2:
+                render_metric_card("Total Profiles", str(total_profiles))
+            st.caption("Select a profile to toggle active/inactive crawl status.")
+
     rows = get_jobs(st.session_state["db_path"], user_id=user_filter, limit=2000)
     snap = dashboard_snapshot(rows)
 

@@ -13,6 +13,7 @@ DEFAULT_CONTEXT = {
     "user_id": "default",
     "display_name": "Default User",
     "notification_email": "",
+    "crawl_active": False,
     "target_roles": ["Product Manager"],
     "preferred_locations": ["Remote US"],
     "excluded_locations": [],
@@ -34,6 +35,14 @@ def _slugify(value: str) -> str:
     return cleaned or "user"
 
 
+def _as_bool(value: Any, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 def profile_path(user_id: str, root: Path = Path("config/users")) -> Path:
     return root / f"{_slugify(user_id)}.yaml"
 
@@ -53,11 +62,23 @@ def _read_yaml(path: Path) -> dict[str, Any]:
 def save_profile(context: dict[str, Any], root: Path = Path("config/users")) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     user_id = str(context.get("user_id", "")).strip() or "user"
-    normalized = dict(DEFAULT_CONTEXT)
-    normalized.update(context)
-    normalized["user_id"] = _slugify(user_id)
+    normalized_user = _slugify(user_id)
+    path = profile_path(normalized_user, root=root)
+    existing = _read_yaml(path)
 
-    path = profile_path(normalized["user_id"], root=root)
+    normalized = dict(DEFAULT_CONTEXT)
+    normalized.update(existing)
+    normalized.update(context)
+    normalized["user_id"] = normalized_user
+
+    # First setup defaults to crawl-active; later edits preserve explicit choice.
+    if "crawl_active" in context:
+        normalized["crawl_active"] = _as_bool(context.get("crawl_active"), default=True)
+    elif existing:
+        normalized["crawl_active"] = _as_bool(existing.get("crawl_active"), default=True)
+    else:
+        normalized["crawl_active"] = True
+
     with path.open("w", encoding="utf-8") as handle:
         if yaml is None:
             # Minimal fallback format if PyYAML is unavailable.
@@ -110,6 +131,7 @@ def load_profile(user_id: str | None = None, root: Path = Path("config/users")) 
             normalized = dict(DEFAULT_CONTEXT)
             normalized.update(candidate)
             normalized["user_id"] = _slugify(str(normalized.get("user_id", resolved_id)))
+            normalized["crawl_active"] = _as_bool(normalized.get("crawl_active"), default=False)
             return normalized
 
     # Auto-load first profile if present.
@@ -121,6 +143,47 @@ def load_profile(user_id: str | None = None, root: Path = Path("config/users")) 
                 normalized = dict(DEFAULT_CONTEXT)
                 normalized.update(candidate)
                 normalized["user_id"] = _slugify(str(normalized.get("user_id", yaml_files[0].stem)))
+                normalized["crawl_active"] = _as_bool(normalized.get("crawl_active"), default=False)
                 return normalized
 
-    return load_legacy_preferences()
+    legacy = load_legacy_preferences()
+    legacy["crawl_active"] = _as_bool(legacy.get("crawl_active"), default=False)
+    return legacy
+
+
+def is_profile_configured(profile: dict[str, Any]) -> bool:
+    user_id = str(profile.get("user_id", "")).strip()
+    display = str(profile.get("display_name", "")).strip()
+    target_roles = [str(x).strip() for x in profile.get("target_roles", []) if str(x).strip()]
+    return bool(user_id and display and target_roles)
+
+
+def list_crawl_enabled_profiles(root: Path = Path("config/users")) -> list[str]:
+    if not root.exists():
+        return []
+    enabled: list[str] = []
+    for path in sorted(root.glob("*.yaml")):
+        profile = load_profile(user_id=path.stem, root=root)
+        if is_profile_configured(profile) and _as_bool(profile.get("crawl_active"), default=False):
+            enabled.append(str(profile["user_id"]))
+    return enabled
+
+
+def set_profile_crawl_active(user_id: str, active: bool, root: Path = Path("config/users")) -> bool:
+    uid = _slugify(user_id)
+    path = profile_path(uid, root=root)
+    if not path.exists():
+        return False
+    profile = load_profile(user_id=uid, root=root)
+    profile["crawl_active"] = bool(active)
+    save_profile(profile, root=root)
+    return True
+
+
+def get_profile_status(user_id: str, root: Path = Path("config/users")) -> dict[str, Any]:
+    profile = load_profile(user_id=user_id, root=root)
+    return {
+        "user_id": str(profile.get("user_id", "")).strip(),
+        "configured": is_profile_configured(profile),
+        "crawl_active": _as_bool(profile.get("crawl_active"), default=False),
+    }

@@ -15,7 +15,15 @@ from src.db import (
     start_fetch_run,
     update_job,
 )
-from src.user_context import get_active_user, load_profile, save_profile, set_active_user
+from src.user_context import (
+    get_active_user,
+    get_profile_status,
+    list_crawl_enabled_profiles,
+    load_profile,
+    save_profile,
+    set_active_user,
+    set_profile_crawl_active,
+)
 
 
 def ensure_db(db_path: str) -> None:
@@ -39,6 +47,18 @@ def set_active_profile(user_id: str) -> None:
 
 def load_profile_data(user_id: str | None) -> dict[str, Any]:
     return load_profile(user_id=user_id)
+
+
+def get_profile_runtime_status(user_id: str) -> dict[str, Any]:
+    return get_profile_status(user_id=user_id)
+
+
+def set_profile_runtime_active(user_id: str, active: bool) -> bool:
+    return set_profile_crawl_active(user_id=user_id, active=active)
+
+
+def get_crawl_enabled_profiles() -> list[str]:
+    return list_crawl_enabled_profiles()
 
 
 def save_profile_data(profile: dict[str, Any], set_active: bool = False) -> str:

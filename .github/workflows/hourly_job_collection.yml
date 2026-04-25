@@ -176,6 +176,7 @@ jobs:
           data = json.loads(p.read_text(encoding="utf-8"))
           totals = data.get("totals", {})
           runs = data.get("profile_runs", [])
+          skipped = data.get("profiles_skipped", [])
           failed = [r for r in runs if str(r.get("status", "")).lower() != "success"]
           succeeded = [r for r in runs if str(r.get("status", "")).lower() == "success"]
 
@@ -183,6 +184,7 @@ jobs:
           lines.append("## Hourly Job Collection Summary")
           lines.append("")
           lines.append(f"- Profiles requested: **{len(data.get('profiles_requested', []))}**")
+          lines.append(f"- Profiles skipped (inactive/not configured): **{len(skipped)}**")
           lines.append(f"- Profiles succeeded: **{totals.get('profiles_succeeded', len(succeeded))}**")
           lines.append(f"- Profiles failed: **{totals.get('profiles_failed', len(failed))}**")
           lines.append(f"- Jobs inserted: **{totals.get('jobs_inserted', 0)}**")
@@ -202,6 +204,17 @@ jobs:
               )
           if not runs:
               lines.append("| (none) | - | - | - | - | - |")
+
+          if skipped:
+              lines.append("")
+              lines.append("### Skipped profiles")
+              lines.append("")
+              lines.append("| Profile | Configured | Crawl Active | Reason |")
+              lines.append("|---|---:|---:|---|")
+              for item in skipped[:50]:
+                  lines.append(
+                      f"| {item.get('profile_id','')} | {item.get('configured', False)} | {item.get('crawl_active', False)} | {item.get('reason','')} |"
+                  )
 
           step_summary = Path(__import__("os").environ["GITHUB_STEP_SUMMARY"])
           step_summary.write_text("\n".join(lines) + "\n", encoding="utf-8")

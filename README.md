@@ -126,6 +126,11 @@ Profile-isolated sources:
 - If a profile file is missing, it is bootstrapped from shared defaults once.
 - In Streamlit `Profile Setup`, use **Initialize/Refresh Profile Source Files** to create/update these files.
 
+Profile crawl activation:
+- A profile becomes crawl-active on first successful Profile Setup save.
+- Production hourly crawl runs only profiles that are both configured and `crawl_active: true`.
+- In Streamlit `Dashboard`, select a profile and use **Make Active / Make Inactive** to control whether that profile participates in scheduled crawls.
+
 Manual test crawl workflow:
 - `Test Crawl (25 Companies)` can be run on demand from Actions
 - It builds `config/target_companies_test_25.csv` from the first 25 enabled companies

@@ -11,15 +11,14 @@ from src.db import finish_fetch_run, init_db, start_fetch_run
 from src.logging_utils import configure_logging
 from src.profile_sources import resolve_sources_for_profile
 from src.run_daily import run_daily
+from src.user_context import get_profile_status, list_crawl_enabled_profiles
 
 configure_logging("run_hourly")
 LOGGER = logging.getLogger(__name__)
 
 
 def list_profile_ids(root: Path = Path("config/users")) -> list[str]:
-    if not root.exists():
-        return []
-    return sorted(path.stem for path in root.glob("*.yaml"))
+    return list_crawl_enabled_profiles(root=root)
 
 
 def _split_csv(value: str) -> list[str]:
@@ -66,14 +65,32 @@ def run_hourly(
     summary_path: str = "outputs/hourly_summary.json",
 ) -> dict[str, Any]:
     init_db(db_path)
-    target_profiles = profiles or list_profile_ids()
+    requested_profiles = profiles or list_profile_ids()
+    target_profiles: list[str] = []
+    skipped_profiles: list[dict[str, Any]] = []
+    for pid in requested_profiles:
+        status = get_profile_status(pid)
+        if bool(status.get("configured")) and bool(status.get("crawl_active")):
+            target_profiles.append(str(status.get("user_id", pid)))
+        else:
+            skipped_profiles.append(
+                {
+                    "profile_id": str(status.get("user_id", pid)),
+                    "configured": bool(status.get("configured")),
+                    "crawl_active": bool(status.get("crawl_active")),
+                    "reason": "inactive_or_not_configured",
+                }
+            )
+
     if not target_profiles:
-        target_profiles = ["default"]
+        LOGGER.warning("No runnable profiles found for hourly crawl.")
 
     output: dict[str, Any] = {
         "run_type": "hourly",
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
-        "profiles_requested": target_profiles,
+        "profiles_requested": requested_profiles,
+        "profiles_skipped": skipped_profiles,
+        "profiles_ran": target_profiles,
         "profile_runs": [],
         "totals": {
             "companies_processed": 0,

@@ -1,6 +1,7 @@
 user_id: tanya_product
 display_name: Tanya - Product
 notification_email: tanyagopal14@gmail.com
+crawl_active: true
 target_roles:
   - Product Manager
   - Senior Product Manager
