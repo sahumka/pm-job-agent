@@ -251,7 +251,9 @@ def run_daily(
 
     for job in manual_jobs:
         row_user = str(job.get("user_id", "")).strip()
-        row_user_ids = [row_user] if row_user else default_user_ids
+        # Respect explicit CLI scoping: when --user-id is provided, do not allow
+        # row-level user_id values to route imports to other profiles.
+        row_user_ids = default_user_ids if user_id else ([row_user] if row_user else default_user_ids)
         for uid in row_user_ids:
             uid = uid or "default"
             if uid not in profile_cache:

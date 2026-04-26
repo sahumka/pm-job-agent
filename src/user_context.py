@@ -60,6 +60,15 @@ def _read_yaml(path: Path) -> dict[str, Any]:
         return content
 
 
+def _normalize_profile(raw: dict[str, Any], fallback_user_id: str) -> dict[str, Any]:
+    normalized = dict(DEFAULT_CONTEXT)
+    normalized.update(raw)
+    normalized["user_id"] = _slugify(str(normalized.get("user_id", fallback_user_id)))
+    normalized["crawl_active"] = _as_bool(normalized.get("crawl_active"), default=False)
+    normalized["setup_completed"] = _as_bool(normalized.get("setup_completed"), default=False)
+    return normalized
+
+
 def save_profile(context: dict[str, Any], root: Path = Path("config/users")) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     user_id = str(context.get("user_id", "")).strip() or "user"
@@ -139,11 +148,7 @@ def load_profile(user_id: str | None = None, root: Path = Path("config/users")) 
     if resolved_id:
         candidate = _read_yaml(profile_path(resolved_id, root=root))
         if candidate:
-            normalized = dict(DEFAULT_CONTEXT)
-            normalized.update(candidate)
-            normalized["user_id"] = _slugify(str(normalized.get("user_id", resolved_id)))
-            normalized["crawl_active"] = _as_bool(normalized.get("crawl_active"), default=False)
-            return normalized
+            return _normalize_profile(candidate, fallback_user_id=resolved_id)
 
     # Auto-load first profile if present.
     if root.exists():
@@ -151,11 +156,7 @@ def load_profile(user_id: str | None = None, root: Path = Path("config/users")) 
         if yaml_files:
             candidate = _read_yaml(yaml_files[0])
             if candidate:
-                normalized = dict(DEFAULT_CONTEXT)
-                normalized.update(candidate)
-                normalized["user_id"] = _slugify(str(normalized.get("user_id", yaml_files[0].stem)))
-                normalized["crawl_active"] = _as_bool(normalized.get("crawl_active"), default=False)
-                return normalized
+                return _normalize_profile(candidate, fallback_user_id=yaml_files[0].stem)
 
     legacy = load_legacy_preferences()
     legacy["crawl_active"] = _as_bool(legacy.get("crawl_active"), default=False)
@@ -193,7 +194,24 @@ def set_profile_crawl_active(user_id: str, active: bool, root: Path = Path("conf
 
 
 def get_profile_status(user_id: str, root: Path = Path("config/users")) -> dict[str, Any]:
-    profile = load_profile(user_id=user_id, root=root)
+    requested_user = _slugify(user_id)
+    path = profile_path(requested_user, root=root)
+    if not path.exists():
+        return {
+            "user_id": requested_user,
+            "configured": False,
+            "crawl_active": False,
+        }
+
+    candidate = _read_yaml(path)
+    if not candidate:
+        return {
+            "user_id": requested_user,
+            "configured": False,
+            "crawl_active": False,
+        }
+
+    profile = _normalize_profile(candidate, fallback_user_id=requested_user)
     return {
         "user_id": str(profile.get("user_id", "")).strip(),
         "configured": is_profile_configured(profile),

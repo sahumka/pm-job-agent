@@ -282,12 +282,16 @@ def _profile_page() -> None:
                 action_name="Apply Keywords To Profile",
                 use_container_width=True,
             ):
-                current_skills = [str(x) for x in base.get("skills", [])]
-                merged = sorted(set(current_skills + selected_kw))
-                base["skills"] = merged
-                path = save_profile_data(base, set_active=False)
-                st.success(f"Updated profile skills in {path}")
-                st.rerun()
+                target_user_id = str(base.get("user_id", "")).strip()
+                if not target_user_id:
+                    st.warning("Set a valid user_id in Profile Setup and save the profile before applying keywords.")
+                else:
+                    current_skills = [str(x) for x in base.get("skills", [])]
+                    merged = sorted(set(current_skills + selected_kw))
+                    base["skills"] = merged
+                    path = save_profile_data(base, set_active=False)
+                    st.success(f"Updated profile skills in {path}")
+                    st.rerun()
 
         st.markdown("### Resume Intake")
         st.caption("Upload base resume (PDF/DOCX/TXT/MD). It will be normalized to per-profile base_resume.md.")
